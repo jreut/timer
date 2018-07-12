@@ -1,5 +1,4 @@
 CFLAGS = -Wall -Wpedantic -g
-LDFLAGS = -lrt
 
 all: compile
 
