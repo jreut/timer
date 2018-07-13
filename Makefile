@@ -1,7 +1,8 @@
 CFLAGS = -Wall -Wpedantic
 CFLAGS_DEBUG = ${CFLAGS} -fsanitize=address -g
+LDFLAGS = -lncursesw
 
-SRC = main.c timer.c
+SRC = main.c timer.c ui.c
 EXE = timer timer_debug
 
 all: timer
@@ -13,4 +14,4 @@ timer: ${SRC}
 	${CC} ${CFLAGS} -o $@ $^ ${LDFLAGS}
 
 clean:
-	rm -f ${EXE}
+	rm -f ${EXE} *.o

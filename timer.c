@@ -1,11 +1,8 @@
-#include <stdio.h>
-#include <stdlib.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <time.h>
 #include <sys/timerfd.h>
 #include "timer.h"
-
-#define die(msg)	do { perror(msg); exit(EXIT_FAILURE); } while (0)
 
 /* we assume end > start, else diff = 0 */
 void
@@ -36,27 +33,27 @@ timer_start(long duration_secs, tick_handler on_tick, void *ctx)
 	int fd;
 	
 	if (clock_gettime(CLOCK_BOOTTIME, &end) != 0)
-		die("clock_gettime(end)");
+		on_tick(NULL, NULL, 1);
 	/* TODO: handle overflow */
 	end.tv_sec += duration_secs;
 	if ((fd = timerfd_create(CLOCK_BOOTTIME, 0x0)) == -1)
-		die("timerfd_create()");
+		on_tick(NULL, NULL, 1);
 	/* timer expires every second */
 	new_value.it_value.tv_sec = 0;
 	new_value.it_value.tv_nsec = 500000000;
 	new_value.it_interval.tv_sec = 0;
 	new_value.it_interval.tv_nsec = 500000000;
 	if (timerfd_settime(fd, 0x0, &new_value, NULL) == -1)
-		die("timerfd_settime()");
+		on_tick(NULL, NULL, 1);
 	expiration_counter = 0;
 	max_expirations = duration_secs * 2;
 	while (expiration_counter <= max_expirations) {
 		if (clock_gettime(CLOCK_BOOTTIME, &now) != 0)
-			die("clock_gettime(now)");
+			on_tick(NULL, NULL, 1);
 		time_diff(&now, &end, &remaining);
-		on_tick(&remaining, ctx);
+		on_tick(&remaining, ctx, 0);
 		if (read(fd, &expirations_per, 8) != 8)
-			die("read()");
+			on_tick(NULL, NULL, 1);
 		expiration_counter += expirations_per;
 	}
 	close(fd);
