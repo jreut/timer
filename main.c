@@ -8,6 +8,13 @@ struct ctx {
 };
 
 void
+bye(int status)
+{
+	ui_stop();
+	exit(status);
+}
+
+void
 handler(struct timespec *remaining, void *ctx, int error)
 {
 	struct ctx *context = ctx;
@@ -16,17 +23,16 @@ handler(struct timespec *remaining, void *ctx, int error)
 	char buf[6];
 
 	if (0 != error) {
-		if (0 > sprintf(buf, "??:??"))
-			exit(EXIT_FAILURE);
+		if (0 > sprintf(buf, "??:??")) bye(EXIT_FAILURE);
 	} else {
 		secs = remaining->tv_sec - remaining->tv_nsec / 1000000000;
 		if (0 > sprintf(buf, "%02d:%02d", secs / 60, secs % 60))
-			exit(EXIT_FAILURE);
+			bye(EXIT_FAILURE);
 	}
 
 	if (NULL != context && NULL != context->window)
 		if (ERR == ui_set_centered(context->window, buf))
-			exit(EXIT_FAILURE);
+			bye(EXIT_FAILURE);
 }
 
 int
