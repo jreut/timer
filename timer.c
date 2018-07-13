@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <sys/timerfd.h>
+#include "timer.h"
 
 #define die(msg)	do { perror(msg); exit(EXIT_FAILURE); } while (0)
 
@@ -27,7 +28,7 @@ time_diff(const struct timespec *start, const struct timespec *end, struct times
 }
 
 void
-go(long duration_secs, void (*on_tick)(const struct timespec *remaining))
+timer_start(long duration_secs, tick_handler on_tick, void *ctx)
 {
 	u_int64_t expiration_counter, expirations_per, max_expirations;
 	struct timespec now, end, remaining;
@@ -53,39 +54,10 @@ go(long duration_secs, void (*on_tick)(const struct timespec *remaining))
 		if (clock_gettime(CLOCK_BOOTTIME, &now) != 0)
 			die("clock_gettime(now)");
 		time_diff(&now, &end, &remaining);
-		on_tick(&remaining);
+		on_tick(&remaining, ctx);
 		if (read(fd, &expirations_per, 8) != 8)
 			die("read()");
 		expiration_counter += expirations_per;
 	}
 	close(fd);
-}
-
-void handler(const struct timespec *remaining)
-{
-	int secs = remaining->tv_sec - remaining->tv_nsec / 1000000000;
-	printf("%02d:%02d\n", secs / 60, secs % 60);
-}
-
-int
-main(int argc, char *argv[])
-{
-	long secs;
-	char *endptr;
-
-	if (argc != 2) {
-		printf("%s <duration in seconds>\n", argv[0]);
-		return EXIT_FAILURE;
-	}
-	secs = strtol(argv[1], &endptr, 10);
-	if (*endptr != '\0') {
-		printf("%s is invalid (did you mean %ld?)\n", argv[1], secs);
-		return EXIT_FAILURE;
-	}
-	if (secs <= 0) {
-		printf("duration (%ld) must be greater than zero.\n", secs);
-		return EXIT_FAILURE;
-	}
-	go(secs, handler);
-	return EXIT_SUCCESS;
 }

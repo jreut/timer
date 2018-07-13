@@ -1,8 +1,16 @@
-CFLAGS = -Wall -Wpedantic -g
+CFLAGS = -Wall -Wpedantic
+CFLAGS_DEBUG = ${CFLAGS} -fsanitize=address -g
 
-all: compile
+SRC = main.c timer.c
+EXE = timer timer_debug
 
-compile: timer
+all: timer
 
-timer: timer.c
-	${CC} ${CFLAGS} -o $@ $< ${LDFLAGS}
+timer_debug: ${SRC}
+	${CC} ${CFLAGS_DEBUG} -o $@ $^ ${LDFLAGS}
+
+timer: ${SRC}
+	${CC} ${CFLAGS} -o $@ $^ ${LDFLAGS}
+
+clean:
+	rm -f ${EXE}
