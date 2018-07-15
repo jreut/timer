@@ -12,8 +12,6 @@ ui_start()
 	cbreak();
 	noecho();
 	curs_set(0);
-	clear();
-	refresh();
 	return stdscr;
 }
 

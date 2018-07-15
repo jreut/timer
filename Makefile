@@ -1,11 +1,11 @@
-CFLAGS = -Wall -Wpedantic
+CFLAGS = -Wall -Wpedantic -pthread
 CFLAGS_DEBUG = ${CFLAGS} -fsanitize=address -g
 LDFLAGS = -lncursesw
 
 SRC = main.c timer.c ui.c
 EXE = timer timer_debug
 
-all: timer
+all: timer timer_debug
 
 timer_debug: ${SRC}
 	${CC} ${CFLAGS_DEBUG} -o $@ $^ ${LDFLAGS}
