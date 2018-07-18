@@ -49,15 +49,31 @@ thread_timer_start(void *ctx)
 }
 
 struct ui_thread_ctx {
-	bool is_ready;
 	WINDOW *window;
+};
+
+void
+ui_thread_cleanup(void *arg)
+{
+	ui_stop();
 }
 
 void *
 ui_thread_start(void *ctx)
 {
+	struct timespec sleepspec = {
+		.tv_sec = 0,
+		.tv_nsec = 500000000,
+	};
 	struct ui_thread_ctx *context = ctx;
-	context->window;
+	pthread_cleanup_push(ui_thread_cleanup, NULL);
+	context->window = ui_start();
+
+	if (NULL == context->window) pthread_exit(NULL);
+	while (true)
+		nanosleep(&sleepspec, NULL);
+	pthread_cleanup_pop(true);
+	pthread_exit(NULL);
 }
 
 
@@ -65,12 +81,16 @@ int
 main(int argc, char *argv[])
 {
 	char *endptr;
-	WINDOW *win = NULL;
+	struct timespec sleepspec = {
+		.tv_sec = 0,
+		.tv_nsec = 500000000,
+	};
+	int timeout = 0;
 	struct tick_handler_ctx handler_ctx;
 	struct timer_thread_ctx thread_ctx;
 	struct ui_thread_ctx ui_thread_ctx;
-	pthread_attr_t timer_thread_attr;
 	pthread_t timer_thread;
+	pthread_t ui_thread;
 
 	if (argc != 2) {
 		fprintf(stderr, "%s <duration in seconds>\n", argv[0]);
@@ -87,28 +107,25 @@ main(int argc, char *argv[])
 		return(EXIT_FAILURE);
 	}
 
-	win = ui_start();
-	if (NULL == win) {
-		ui_stop();
-		fprintf(stderr, "could not initialize window\n");
-		return(EXIT_FAILURE);
-	}
+	ui_thread_ctx.window = NULL;
+
 	pthread_create(&ui_thread, NULL, ui_thread_start, &ui_thread_ctx);
 
+	while (NULL == ui_thread_ctx.window && timeout++ < 10)
+		nanosleep(&sleepspec, NULL);
 
-	handler_ctx.window = win;
+	if (10 == timeout)
+		return(EXIT_FAILURE);
+
+	handler_ctx.window = ui_thread_ctx.window;
 	thread_ctx.tick_handler_context = &handler_ctx;
 	thread_ctx.tick_handler = tick_handler_callback;
 
-	pthread_attr_init(&timer_thread_attr);
-	pthread_create(&timer_thread, &timer_thread_attr,
-			thread_timer_start, &thread_ctx);
+	pthread_create(&timer_thread, NULL, thread_timer_start, &thread_ctx);
 	pthread_join(timer_thread, NULL);
+
 	pthread_cancel(ui_thread);
-	if (0 != ui_stop()) {
-		fprintf(stderr, "failure stopping window\n");
-		return(EXIT_FAILURE);
-	}
+	pthread_join(ui_thread, NULL);
 
 	return EXIT_SUCCESS;
 }
