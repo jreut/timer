@@ -6,6 +6,11 @@
 #include "timer.h"
 #include "ui.h"
 
+static const struct timespec waittime = {
+	.tv_sec = 0,
+	.tv_nsec = 100000000,
+};
+
 struct tick_handler_ctx {
 	WINDOW *window;
 };
@@ -50,6 +55,7 @@ thread_timer_start(void *ctx)
 
 struct ui_thread_ctx {
 	WINDOW *window;
+	pthread_t *timer_thread;
 };
 
 void
@@ -62,18 +68,15 @@ void *
 ui_thread_start(void *ctx)
 {
 	int c;
-	struct timespec sleepspec = {
-		.tv_sec = 0,
-		.tv_nsec = 500000000,
-	};
 	struct ui_thread_ctx *context = ctx;
 	pthread_cleanup_push(ui_thread_cleanup, NULL);
 	context->window = ui_start();
 
 	if (NULL == context->window) pthread_exit(NULL);
-	while ((c = wgetch(context->window)) != 'q') {
-		nanosleep(&sleepspec, NULL);
-	}
+	while ((c = wgetch(context->window)) != 'q')
+		nanosleep(&waittime, NULL);
+	if (NULL != context->timer_thread)
+		pthread_cancel(*context->timer_thread);
 	pthread_cleanup_pop(true);
 	pthread_exit(NULL);
 }
@@ -83,10 +86,6 @@ int
 main(int argc, char *argv[])
 {
 	char *endptr;
-	struct timespec sleepspec = {
-		.tv_sec = 0,
-		.tv_nsec = 500000000,
-	};
 	int timeout = 0;
 	struct tick_handler_ctx handler_ctx;
 	struct timer_thread_ctx timer_thread_ctx;
@@ -110,11 +109,12 @@ main(int argc, char *argv[])
 	}
 
 	ui_thread_ctx.window = NULL;
+	ui_thread_ctx.timer_thread = &timer_thread;
 
 	pthread_create(&ui_thread, NULL, ui_thread_start, &ui_thread_ctx);
 
 	while (NULL == ui_thread_ctx.window && timeout++ < 10)
-		nanosleep(&sleepspec, NULL);
+		nanosleep(&waittime, NULL);
 
 	if (10 == timeout)
 		return(EXIT_FAILURE);

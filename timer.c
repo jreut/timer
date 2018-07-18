@@ -37,14 +37,14 @@ timer_start(long duration_secs, tick_handler on_tick, void *ctx)
 	/* TODO: handle overflow */
 	end.tv_sec += duration_secs;
 	fd = timerfd_create(CLOCK_BOOTTIME, 0x0);
-	/* timer expires every second */
+	/* timer expires every 1/10 second */
 	new_value.it_value.tv_sec = 0;
-	new_value.it_value.tv_nsec = 500000000;
+	new_value.it_value.tv_nsec = 100000000;
 	new_value.it_interval.tv_sec = 0;
-	new_value.it_interval.tv_nsec = 500000000;
+	new_value.it_interval.tv_nsec = 100000000;
 	timerfd_settime(fd, 0x0, &new_value, NULL);
 	expiration_counter = 0;
-	max_expirations = duration_secs * 2;
+	max_expirations = duration_secs * 10;
 	while (expiration_counter <= max_expirations) {
 		clock_gettime(CLOCK_BOOTTIME, &now);
 		time_diff(&now, &end, &remaining);

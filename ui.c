@@ -33,6 +33,8 @@ ui_set_centered(WINDOW *window, char *str)
 	if (OK != clear()) return -1;
 	if (OK != mvwaddstr(window, cY, cX, str))
 		return -1;
+	if (OK != mvwaddstr(window, y - 1, 0, "(press 'q' to quit)"))
+		return -1;
 	if (OK != refresh()) return -1;
 	return 0;
 
