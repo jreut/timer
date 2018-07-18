@@ -87,7 +87,7 @@ main(int argc, char *argv[])
 	};
 	int timeout = 0;
 	struct tick_handler_ctx handler_ctx;
-	struct timer_thread_ctx thread_ctx;
+	struct timer_thread_ctx timer_thread_ctx;
 	struct ui_thread_ctx ui_thread_ctx;
 	pthread_t timer_thread;
 	pthread_t ui_thread;
@@ -97,13 +97,13 @@ main(int argc, char *argv[])
 		return(EXIT_FAILURE);
 	}
 
-	thread_ctx.secs = strtol(argv[1], &endptr, 10);
+	timer_thread_ctx.secs = strtol(argv[1], &endptr, 10);
 	if (*endptr != '\0') {
-		fprintf(stderr, "%s is invalid (did you mean %ld?)\n", argv[1], thread_ctx.secs);
+		fprintf(stderr, "%s is invalid (did you mean %ld?)\n", argv[1], timer_thread_ctx.secs);
 		return(EXIT_FAILURE);
 	}
-	if (thread_ctx.secs <= 0) {
-		fprintf(stderr, "duration (%ld) must be greater than zero.\n", thread_ctx.secs);
+	if (timer_thread_ctx.secs <= 0) {
+		fprintf(stderr, "duration (%ld) must be greater than zero.\n", timer_thread_ctx.secs);
 		return(EXIT_FAILURE);
 	}
 
@@ -118,10 +118,10 @@ main(int argc, char *argv[])
 		return(EXIT_FAILURE);
 
 	handler_ctx.window = ui_thread_ctx.window;
-	thread_ctx.tick_handler_context = &handler_ctx;
-	thread_ctx.tick_handler = tick_handler_callback;
+	timer_thread_ctx.tick_handler_context = &handler_ctx;
+	timer_thread_ctx.tick_handler = tick_handler_callback;
 
-	pthread_create(&timer_thread, NULL, thread_timer_start, &thread_ctx);
+	pthread_create(&timer_thread, NULL, thread_timer_start, &timer_thread_ctx);
 	pthread_join(timer_thread, NULL);
 
 	pthread_cancel(ui_thread);
