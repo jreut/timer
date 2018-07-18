@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <time.h>
 #include <sys/timerfd.h>
 #include "timer.h"
@@ -27,33 +28,28 @@ time_diff(const struct timespec *start, const struct timespec *end, struct times
 void
 timer_start(long duration_secs, tick_handler on_tick, void *ctx)
 {
-	u_int64_t expiration_counter, expirations_per, max_expirations;
+	uint64_t expiration_counter, expirations_per, max_expirations;
 	struct timespec now, end, remaining;
 	struct itimerspec new_value;
 	int fd;
 	
-	if (clock_gettime(CLOCK_BOOTTIME, &end) != 0)
-		on_tick(NULL, NULL, 1);
+	clock_gettime(CLOCK_BOOTTIME, &end);
 	/* TODO: handle overflow */
 	end.tv_sec += duration_secs;
-	if ((fd = timerfd_create(CLOCK_BOOTTIME, 0x0)) == -1)
-		on_tick(NULL, NULL, 1);
+	fd = timerfd_create(CLOCK_BOOTTIME, 0x0);
 	/* timer expires every second */
 	new_value.it_value.tv_sec = 0;
 	new_value.it_value.tv_nsec = 500000000;
 	new_value.it_interval.tv_sec = 0;
 	new_value.it_interval.tv_nsec = 500000000;
-	if (timerfd_settime(fd, 0x0, &new_value, NULL) == -1)
-		on_tick(NULL, NULL, 1);
+	timerfd_settime(fd, 0x0, &new_value, NULL);
 	expiration_counter = 0;
 	max_expirations = duration_secs * 2;
 	while (expiration_counter <= max_expirations) {
-		if (clock_gettime(CLOCK_BOOTTIME, &now) != 0)
-			on_tick(NULL, NULL, 1);
+		clock_gettime(CLOCK_BOOTTIME, &now);
 		time_diff(&now, &end, &remaining);
-		on_tick(&remaining, ctx, 0);
-		if (read(fd, &expirations_per, 8) != 8)
-			on_tick(NULL, NULL, 1);
+		on_tick(&remaining, ctx);
+		read(fd, &expirations_per, 8);
 		expiration_counter += expirations_per;
 	}
 	close(fd);
