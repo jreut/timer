@@ -61,6 +61,7 @@ ui_thread_cleanup(void *arg)
 void *
 ui_thread_start(void *ctx)
 {
+	int c;
 	struct timespec sleepspec = {
 		.tv_sec = 0,
 		.tv_nsec = 500000000,
@@ -70,8 +71,9 @@ ui_thread_start(void *ctx)
 	context->window = ui_start();
 
 	if (NULL == context->window) pthread_exit(NULL);
-	while (true)
+	while ((c = wgetch(context->window)) != 'q') {
 		nanosleep(&sleepspec, NULL);
+	}
 	pthread_cleanup_pop(true);
 	pthread_exit(NULL);
 }
