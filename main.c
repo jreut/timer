@@ -11,8 +11,18 @@ static const struct timespec waittime = {
 	.tv_nsec = 100000000,
 };
 
+enum status {
+	GO,
+	STOP
+};
+
+struct state {
+	enum status status;
+};
+
 struct tick_handler_ctx {
 	WINDOW *window;
+	struct state *state;
 };
 
 void
@@ -30,13 +40,23 @@ tick_handler_callback(struct timespec *remaining, void *ctx)
 	/* HH:MM\0 */
 	char buf[6];
 
-	secs = remaining->tv_sec - remaining->tv_nsec / 1000000000;
-	if (0 > sprintf(buf, "%02d:%02d", secs / 60, secs % 60))
-		bye(EXIT_FAILURE);
+	switch (context->state->status) {
+		case GO:
+			secs = remaining->tv_sec - remaining->tv_nsec / 1000000000;
+			if (0 > sprintf(buf, "%02d:%02d", secs / 60, secs % 60))
+				bye(EXIT_FAILURE);
 
-	if (NULL != context && NULL != context->window)
-		if (ERR == ui_set_centered(context->window, buf))
-			bye(EXIT_FAILURE);
+			if (NULL != context && NULL != context->window)
+				if (ERR == ui_set_centered(context->window, buf))
+					bye(EXIT_FAILURE);
+			break;
+		case STOP:
+			pthread_exit(NULL);
+		default:
+			pthread_exit(NULL);
+
+	}
+
 }
 
 struct timer_thread_ctx {
@@ -55,7 +75,7 @@ thread_timer_start(void *ctx)
 
 struct ui_thread_ctx {
 	WINDOW *window;
-	pthread_t *timer_thread;
+	struct state *state;
 };
 
 void
@@ -73,10 +93,9 @@ ui_thread_start(void *ctx)
 	context->window = ui_start();
 
 	if (NULL == context->window) pthread_exit(NULL);
-	while ((c = wgetch(context->window)) != 'q')
+	while (context->state->status == GO && (c = wgetch(context->window)) != 'q')
 		nanosleep(&waittime, NULL);
-	if (NULL != context->timer_thread)
-		pthread_cancel(*context->timer_thread);
+	context->state->status = STOP;
 	pthread_cleanup_pop(true);
 	pthread_exit(NULL);
 }
@@ -87,6 +106,7 @@ main(int argc, char *argv[])
 {
 	char *endptr;
 	int timeout = 0;
+	struct state state;
 	struct tick_handler_ctx handler_ctx;
 	struct timer_thread_ctx timer_thread_ctx;
 	struct ui_thread_ctx ui_thread_ctx;
@@ -108,8 +128,10 @@ main(int argc, char *argv[])
 		return(EXIT_FAILURE);
 	}
 
+	state.status = GO;
+
 	ui_thread_ctx.window = NULL;
-	ui_thread_ctx.timer_thread = &timer_thread;
+	ui_thread_ctx.state = &state;
 
 	pthread_create(&ui_thread, NULL, ui_thread_start, &ui_thread_ctx);
 
@@ -120,6 +142,7 @@ main(int argc, char *argv[])
 		return(EXIT_FAILURE);
 
 	handler_ctx.window = ui_thread_ctx.window;
+	handler_ctx.state = &state;
 	timer_thread_ctx.tick_handler_context = &handler_ctx;
 	timer_thread_ctx.tick_handler = tick_handler_callback;
 
